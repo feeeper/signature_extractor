@@ -37,25 +37,29 @@ from matplotlib import pyplot as plt
 from matplotlib import image as image
 import easygui
 
+
 class Rect:
-    def __init__(self, x = 0, y = 0, w = 0, h = 0):
+    def __init__(self, x=0, y=0, w=0, h=0):
         self.x = x
         self.y = y
         self.w = w
         self.h = h
         self.area = 0
 
-    def setArea(self, area):
+    def set_area(self, area):
         self.area = area
-    def getArea(self):
+
+    def get_area(self):
         return self.area
+
     def set(self, x, y, w, h):
         self.x = x
         self.y = y
         self.w = w
         self.h = h
         self.area = w * h
-    def addPadding(self, imgSize, padding):
+
+    def add_padding(self, img_size, padding):
         self.x -= padding
         self.y -= padding
         self.w += 2 * padding
@@ -64,16 +68,19 @@ class Rect:
             self.x = 0
         if self.y < 0:
             self.y = 0
-        if self.x + self.w > imgSize[0]:
-            self.w = imgSize[0] - self.x
-        if self.y + self.h > imgSize[1]:
-            self.h = imgSize[1] - self.y
-
+        if self.x + self.w > img_size[0]:
+            self.w = img_size[0] - self.x
+        if self.y + self.h > img_size[1]:
+            self.h = img_size[1] - self.y
 
 
 # TODO Use easygui to open images
 imgsPath = 'images/'
-signature = cv2.imread(imgsPath + 'Trump.jpg')
+# signature = cv2.imread(imgsPath + 'Trump.jpg')
+signature = cv2.imread(imgsPath + 'sig1.jpg')
+
+
+# signature = cv2.imread(imgsPath + 'cs-11-wo-stamp-and-bar.bmp')
 # signature = cv2.medianBlur(signature, 3)
 # signature = cv2.GaussianBlur(signature, (3, 3), 0)
 
@@ -86,10 +93,10 @@ def getPageFromImage(img):
     # bImg = cv2.medianBlur(src = gImg, ksize = 11)
     bImg = gImg.copy()
 
-    threshold, _ = cv2.threshold(src = bImg, thresh = 0, maxval = 255, type = cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-    cannyImg = cv2.Canny(image = bImg, threshold1 = 0.5 * threshold, threshold2 = threshold)
+    threshold, _ = cv2.threshold(src=bImg, thresh=0, maxval=255, type=cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+    cannyImg = cv2.Canny(image=bImg, threshold1=0.5 * threshold, threshold2=threshold)
 
-    _, contours, _ = cv2.findContours(image = cannyImg.copy(), mode = cv2.RETR_TREE, method = cv2.CHAIN_APPROX_SIMPLE)
+    _, contours, _ = cv2.findContours(image=cannyImg.copy(), mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_SIMPLE)
 
     # There is no page in the image
     if len(contours) == 0:
@@ -103,28 +110,28 @@ def getPageFromImage(img):
         # Reference - http://docs.opencv.org/3.1.0/dd/d49/tutorial_py_contour_features.html
         epsilon = cv2.arcLength(contour, True)
         corners = cv2.approxPolyDP(contour, 0.1 * epsilon, True)
-        x, y, w, h = cv2.boundingRect(points = contour)
+        x, y, w, h = cv2.boundingRect(contour)
         currentArea = w * h
         # currentArea = cv2.contourArea(contour)
 
         # check if length of approx is 4
-        if len(corners) == 4 and currentArea > maxRect.getArea():
+        if len(corners) == 4 and currentArea > maxRect.get_area():
             maxRect.set(x, y, w, h)
             print(cv2.isContourConvex(contour))
             # maxRect.setArea(currentArea)
 
     contoursInPage = 0
     for contour in contours:
-        x, y, _, _ = cv2.boundingRect(points = contour)
-        if (x > maxRect.x and x < maxRect.x + maxRect.w) and (y > maxRect.y and y < maxRect.y + maxRect.h):
-                contoursInPage += 1
+        x, y, _, _ = cv2.boundingRect(contour)
+        if (maxRect.x < x < maxRect.x + maxRect.w) and (maxRect.y < y < maxRect.y + maxRect.h):
+            contoursInPage += 1
 
     maxContours = 5
     if contoursInPage <= maxContours:
         print('No Page Found')
         return img
 
-    return img[maxRect.y : maxRect.y + maxRect.h, maxRect.x : maxRect.x + maxRect.w]
+    return img[maxRect.y: maxRect.y + maxRect.h, maxRect.x: maxRect.x + maxRect.w]
 
 
 def getSignatureFromPage(img):
@@ -134,23 +141,24 @@ def getSignatureFromPage(img):
 
     # The values for edge detection can be approximated using Otsu's Algorithm
     # Reference - http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.402.5899&rep=rep1&type=pdf
-    threshold, _ = cv2.threshold(src = gImg, thresh = 0, maxval = 255, type = cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-    cannyImg = cv2.Canny(image = gImg, threshold1 = 0.5 * threshold, threshold2 = threshold)
+    threshold, _ = cv2.threshold(src=gImg, thresh=0, maxval=255, type=cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+    cannyImg = cv2.Canny(image=gImg, threshold1=0.5 * threshold, threshold2=threshold)
 
     # Close the image to fill blank spots so blocks of text that are close together (like the signature) are easier to detect
     # Signature usually are wider and shorter so the strcturing elements used for closing will have this ratio
-    kernel = cv2.getStructuringElement(shape = cv2.MORPH_RECT, ksize = (30, 1))
-    cannyImg = cv2.morphologyEx(src = cannyImg, op = cv2.MORPH_CLOSE, kernel = kernel)
+    kernel = cv2.getStructuringElement(shape=cv2.MORPH_RECT, ksize=(30, 1))
+    cannyImg = cv2.morphologyEx(src=cannyImg, op=cv2.MORPH_CLOSE, kernel=kernel)
 
     # findContours is a distructive function so the image pased is only a copy
-    _, contours, _ = cv2.findContours(image = cannyImg.copy(), mode = cv2.RETR_TREE, method = cv2.CHAIN_APPROX_SIMPLE)
+    _, contours, _ = cv2.findContours(image=cannyImg.copy(), mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_SIMPLE)
 
     maxRect = Rect(0, 0, 0, 0)
     maxCorners = 0
+
     for contour in contours:
         epsilon = cv2.arcLength(contour, True)
         corners = cv2.approxPolyDP(contour, 0.01 * epsilon, True)
-        x, y, w, h = cv2.boundingRect(points = contour)
+        x, y, w, h = cv2.boundingRect(contour)
         currentArea = w * h
         # Maybe add w > h ?
         # if currentArea > maxRect.getArea():
@@ -159,9 +167,10 @@ def getSignatureFromPage(img):
             maxRect.set(x, y, w, h)
 
     # Increase the bounding box to get a better view of the signature
-    maxRect.addPadding(imgSize = imgSize, padding = 10)
+    maxRect.add_padding(img_size=imgSize, padding=10)
 
-    return img[maxRect.y : maxRect.y + maxRect.h, maxRect.x : maxRect.x + maxRect.w]
+    return img[maxRect.y: maxRect.y + maxRect.h, maxRect.x: maxRect.x + maxRect.w]
+
 
 def getSignature(img):
     imgSize = np.shape(img)
@@ -204,10 +213,12 @@ def getSignature(img):
         else:
             blockSize = imgSize[1]
 
-    mask = cv2.adaptiveThreshold(gImg, maxValue = 255, adaptiveMethod = cv2.ADAPTIVE_THRESH_MEAN_C, thresholdType = cv2.THRESH_BINARY, blockSize = blockSize, C = C)
+    mask = cv2.adaptiveThreshold(gImg, maxValue=0, adaptiveMethod=cv2.ADAPTIVE_THRESH_MEAN_C,
+                                 thresholdType=cv2.THRESH_BINARY, blockSize=blockSize, C=C)
     rmask = cv2.bitwise_not(mask)
 
     return cv2.bitwise_and(signature, signature, mask=rmask)
+
 
 # Camera capture
 # camera = cv2.VideoCapture(0)
@@ -215,11 +226,16 @@ def getSignature(img):
 # cv2.imshow('Picture', signature)
 # cv2.waitKey(0)
 
-signature = getPageFromImage(img = signature)
-signature = getSignatureFromPage(img = signature)
-signature = getSignature(img = signature)
 
+signature = getPageFromImage(img=signature)
+# cv2.imshow('1', signature)
+
+signature = getSignatureFromPage(img=signature)
+cv2.imshow('2', signature)
+
+signature = getSignature(img=signature)
 cv2.imshow('Signature', signature)
+
 key = cv2.waitKey(0)
 
 # def adaptiveThreshold(img):

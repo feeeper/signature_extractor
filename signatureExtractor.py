@@ -93,7 +93,7 @@ def getPageFromImage(img):
 
     # There is no page in the image
     if len(contours) == 0:
-        print 'No Page Found'
+        print('No Page Found')
         return img
 
     maxRect = Rect(0, 0, 0, 0)
@@ -110,7 +110,7 @@ def getPageFromImage(img):
         # check if length of approx is 4
         if len(corners) == 4 and currentArea > maxRect.getArea():
             maxRect.set(x, y, w, h)
-            print cv2.isContourConvex(contour)
+            print(cv2.isContourConvex(contour))
             # maxRect.setArea(currentArea)
 
     contoursInPage = 0
@@ -121,7 +121,7 @@ def getPageFromImage(img):
 
     maxContours = 5
     if contoursInPage <= maxContours:
-        print 'No Page Found'
+        print('No Page Found')
         return img
 
     return img[maxRect.y : maxRect.y + maxRect.h, maxRect.x : maxRect.x + maxRect.w]

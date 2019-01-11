@@ -33,6 +33,8 @@
 
 import numpy as np
 import cv2
+import os
+from tqdm import tqdm
 from matplotlib import pyplot as plt
 from matplotlib import image as image
 import easygui
@@ -72,16 +74,6 @@ class Rect:
             self.w = img_size[0] - self.x
         if self.y + self.h > img_size[1]:
             self.h = img_size[1] - self.y
-
-
-# TODO Use easygui to open images
-images_path = 'images/'
-# signature = cv2.imread(images_path + 'Trump.jpg')
-signature = cv2.imread(images_path + 'sig3.jpg')
-
-# signature = cv2.imread(imgsPath + 'cs-11-wo-stamp-and-bar.bmp')
-# signature = cv2.medianBlur(signature, 3)
-# signature = cv2.GaussianBlur(signature, (3, 3), 0)
 
 
 # TODO Throw error if it's not a valid image
@@ -130,8 +122,13 @@ def get_page_from_image(img):
     return img[max_rect.y: max_rect.y + max_rect.h, max_rect.x: max_rect.x + max_rect.w]
 
 
-def get_signature_from_page(img):
+def get_signature_from_page(img, filename):
+    if not os.path.exists('images/' + filename + '/'):
+        os.mkdir('images/' + filename + '/')
+    cv2.imwrite('images/{}/{}.png'.format(filename, filename), img)
+
     img_size = np.shape(img)
+
 
     g_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
@@ -139,6 +136,7 @@ def get_signature_from_page(img):
     # Reference - http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.402.5899&rep=rep1&type=pdf
     threshold, _ = cv2.threshold(src=g_img, thresh=0, maxval=255, type=cv2.THRESH_BINARY | cv2.THRESH_OTSU)
     canny_img = cv2.Canny(image=g_img, threshold1=0.5 * threshold, threshold2=threshold)
+    cv2.imwrite('images/{}/{}_canny.png'.format(filename, filename), canny_img)
 
     # Close the image to fill blank spots so blocks of text that are close together (like the signature) are easier to detect
     # Signature usually are wider and shorter so the strcturing elements used for closing will have this ratio
@@ -151,19 +149,29 @@ def get_signature_from_page(img):
     max_rect = Rect(0, 0, 0, 0)
     max_corners = 0
 
+    # corners_ = [{'contour': contour, 'corners': cv2.approxPolyDP(contour, 0.01 * cv2.arcLength(contour, True), True)} for contour in contours]
+    # sorted_corners = sorted(corners_, key=lambda z: len(z['corners']))
+    # x, y, w, h = cv2.boundingRect(sorted_corners[-1]['contour'])
+    # max_rect.set(x, y, w, h)
+
+    i = 0
     for contour in contours:
         epsilon = cv2.arcLength(contour, True)
         corners = cv2.approxPolyDP(contour, 0.01 * epsilon, True)
         x, y, w, h = cv2.boundingRect(contour)
-        current_area = w * h
-        # Maybe add w > h ?
-        # if current_area > max_rect.getArea():
-        if len(corners) > max_corners:
-            max_corners = len(corners)
-            max_rect.set(x, y, w, h)
+
+        if w * h > 0.001 * img_size[0] * img_size[1]:
+            i += 1
+            tmp_img = img[y:y + h, x:x + w]
+            cv2.imwrite('images/{}/{}_{}.png'.format(filename, filename, i), tmp_img)
+            cv2.imwrite('C:/Users/shirobokov_av/Desktop/Temp/dataset/{}_{}.png'.format(filename, i), tmp_img)
+
+            if len(corners) > max_corners:
+                max_corners = len(corners)
+                max_rect.set(x, y, w, h)
 
     # Increase the bounding box to get a better view of the signature
-    max_rect.add_padding(img_size=img_size, padding=10)
+    # max_rect.add_padding(img_size=img_size, padding=10)
 
     return img[max_rect.y: max_rect.y + max_rect.h, max_rect.x: max_rect.x + max_rect.w]
 
@@ -223,16 +231,29 @@ def get_signature(img):
 # cv2.waitKey(0)
 
 
-signature = get_page_from_image(img=signature)
-# cv2.imshow('1', signature)
+# TODO Use easygui to open images
+images_path = 'images/ario/'
 
-signature = get_signature_from_page(img=signature)
-cv2.imshow('2', signature)
+for f in tqdm(os.listdir(images_path)):
+    signature = cv2.imread(images_path + f)
+    # signature = cv2.imread(images_path + 'Trump.jpg')
+    # signature = cv2.imread(images_path + 'sig2.jpg')
+    # signature = cv2.imread(images_path + 'cs-11-wo-stamp-and-bar.bmp')
+    # signature = cv2.imread(images_path + 'cs-11.tiff')
 
-signature = get_signature(img=signature)
-cv2.imshow('Signature', signature)
+    # signature = cv2.medianBlur(signature, 3)
+    # signature = cv2.GaussianBlur(signature, (3, 3), 0)
 
-key = cv2.waitKey(0)
+    # signature = get_page_from_image(img=signature)
+    # cv2.imshow('1', signature)
+
+    signature = get_signature_from_page(signature, f)
+    # cv2.imshow('we2', signature)
+
+    signature = get_signature(img=signature)
+    # cv2.imshow('Signature', signature)
+
+    key = cv2.waitKey(0)
 
 # def adaptiveThreshold(img):
 #     g = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)

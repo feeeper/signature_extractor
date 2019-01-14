@@ -79,6 +79,7 @@ import numpy as np
 import cv2
 import easygui
 
+
 def getImageFromFile():
     file = easygui.fileopenbox()
     img = cv2.imread(file)
@@ -88,6 +89,7 @@ def getImageFromFile():
 
     return img
 
+
 def getImageFromCamera():
     camera = cv2.VideoCapture(0)
     (success, img) = camera.read()
@@ -96,6 +98,7 @@ def getImageFromCamera():
         errorPrompt('Cannot capture image')
 
     return img
+
 
 def writeImageToFile(img, mask):
     # The mask of the signature can be used as the alpha channel of the image
@@ -110,6 +113,7 @@ def writeImageToFile(img, mask):
 
     cv2.imwrite(fileName, imgWithAlpha)
 
+
 def displayImageToScreen(img, mask):
     imgSize = np.shape(img)
     bg = np.zeros((imgSize[0], imgSize[1], 3), np.uint8)
@@ -117,24 +121,26 @@ def displayImageToScreen(img, mask):
 
     # Add a white background to the signature
     rmask = cv2.bitwise_not(mask)
-    bgROI = cv2.bitwise_and(bg, bg, mask = rmask)
-    sigROI = cv2.bitwise_and(signature, signature, mask = mask)
+    bgROI = cv2.bitwise_and(bg, bg, mask=rmask)
+    sigROI = cv2.bitwise_and(signature, signature, mask=mask)
 
     roi = cv2.bitwise_or(bgROI, sigROI)
 
     cv2.imshow('Signature', roi)
     cv2.waitKey(0)
 
+
 def errorPrompt(errorMsg):
-    print 'Error: ' + errorMsg
-    easygui.msgbox(msg = errorMsg, title = 'ERROR', ok_button = 'OK')
+    print('Error: ' + errorMsg)
+    easygui.msgbox(msg=errorMsg, title='ERROR', ok_button='OK')
     quit()
+
 
 def scaleImageDown(img):
     imgSize = np.shape(img)
     maxSize = (1920, 1080)
     if imgSize[0] > maxSize[0] or imgSize[1] > maxSize[1]:
-        print 'Warning: Image too big'
+        print('Warning: Image too big')
         wRatio = float(float(maxSize[0]) / float(imgSize[0]))
         hRatio = float(float(maxSize[1]) / float(imgSize[1]))
         ratio = 1.0
@@ -144,6 +150,7 @@ def scaleImageDown(img):
             ratio = hRatio
         return cv2.resize(img, (int(ratio * imgSize[1]), int(ratio * imgSize[0])))
     return img
+
 
 def addPadding(rect, padding, imgSize):
     rect['x'] -= padding
@@ -161,19 +168,20 @@ def addPadding(rect, padding, imgSize):
 
     return rect
 
+
 def getPageFromImage(img):
     imgSize = np.shape(img)
 
     gImg = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    threshold, _ = cv2.threshold(src = gImg, thresh = 0, maxval = 255, type = cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-    cannyImg = cv2.Canny(image = gImg, threshold1 = 0.5 * threshold, threshold2 = threshold)
+    threshold, _ = cv2.threshold(src=gImg, thresh=0, maxval=255, type=cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+    cannyImg = cv2.Canny(image=gImg, threshold1=0.5 * threshold, threshold2=threshold)
 
     # findContours() is a distructive function so a copy is passed as a parameter
-    _, contours, _ = cv2.findContours(image = cannyImg.copy(), mode = cv2.RETR_TREE, method = cv2.CHAIN_APPROX_SIMPLE)
+    _, contours, _ = cv2.findContours(image=cannyImg.copy(), mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_SIMPLE)
 
     if len(contours) == 0:
-        print 'Warning: No Page Found'
+        print('Warning: No Page Found')
         return img
 
     maxRect = {
@@ -188,9 +196,9 @@ def getPageFromImage(img):
         arcPercentage = 0.1
 
         # Contour Perimeter
-        epsilon = cv2.arcLength(curve = contour, closed = True) * arcPercentage
-        corners = cv2.approxPolyDP(curve = contour, epsilon = epsilon, closed = True)
-        x, y, w, h = cv2.boundingRect(points = corners)
+        epsilon = cv2.arcLength(curve=contour, closed=True) * arcPercentage
+        corners = cv2.approxPolyDP(curve=contour, epsilon=epsilon, closed=True)
+        x, y, w, h = cv2.boundingRect(corners)
         currentArea = w * h
 
         if len(corners) == 4:
@@ -202,39 +210,41 @@ def getPageFromImage(img):
                 maxRect['h'] = h
 
     if maxRect['w'] <= 1 or maxRect['h'] <= 1:
-        print 'Warning: No Page Found'
+        print('Warning: No Page Found')
         return img
 
     contoursInPage = 0
     for coordinate in coordinates:
         x = coordinate[0]
         y = coordinate[1]
-        if (x > maxRect['x'] and x < maxRect['x'] + maxRect['w']) and (y > maxRect['y'] and y < maxRect['y'] + maxRect['h']):
+        if (x > maxRect['x'] and x < maxRect['x'] + maxRect['w']) and (
+                y > maxRect['y'] and y < maxRect['y'] + maxRect['h']):
             contoursInPage += 1
 
     if contoursInPage <= 0:
-        print 'Warning: No Page Found'
+        print('Warning: No Page Found')
         return img
 
-    return img[maxRect['y'] : maxRect['y'] + maxRect['h'], maxRect['x'] : maxRect['x'] + maxRect['w']]
+    return img[maxRect['y']: maxRect['y'] + maxRect['h'], maxRect['x']: maxRect['x'] + maxRect['w']]
+
 
 def getSignatureFromPage(img):
     imgSize = np.shape(img)
 
     gImg = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    threshold, _ = cv2.threshold(src = gImg, thresh = 0, maxval = 255, type = cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-    cannyImg = cv2.Canny(image = gImg, threshold1 = 0.5 * threshold, threshold2 = threshold)
+    threshold, _ = cv2.threshold(src=gImg, thresh=0, maxval=255, type=cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+    cannyImg = cv2.Canny(image=gImg, threshold1=0.5 * threshold, threshold2=threshold)
 
     # The kernel is wide as most signatures are wide
-    kernel = cv2.getStructuringElement(shape = cv2.MORPH_RECT, ksize = (30, 1))
-    cannyImg = cv2.morphologyEx(src = cannyImg, op = cv2.MORPH_CLOSE, kernel = kernel)
+    kernel = cv2.getStructuringElement(shape=cv2.MORPH_RECT, ksize=(30, 1))
+    cannyImg = cv2.morphologyEx(src=cannyImg, op=cv2.MORPH_CLOSE, kernel=kernel)
 
     # findContours() is a distructive function so a copy is passed as a parameter
-    _, contours, _ = cv2.findContours(image = cannyImg.copy(), mode = cv2.RETR_TREE, method = cv2.CHAIN_APPROX_SIMPLE)
+    _, contours, _ = cv2.findContours(image=cannyImg.copy(), mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_SIMPLE)
 
     if len(contours) == 0:
-        print 'Warning: No Signature Found'
+        print('Warning: No Signature Found')
         return img
 
     maxRect = {
@@ -249,9 +259,9 @@ def getSignatureFromPage(img):
         arcPercentage = 0.01
 
         # Contour perimeter
-        epsilon = cv2.arcLength(curve = contour, closed = True) * arcPercentage
-        corners = cv2.approxPolyDP(curve = contour, epsilon = epsilon, closed = True)
-        x, y, w, h = cv2.boundingRect(points = corners)
+        epsilon = cv2.arcLength(curve=contour, closed=True) * arcPercentage
+        corners = cv2.approxPolyDP(curve=contour, epsilon=epsilon, closed=True)
+        x, y, w, h = cv2.boundingRect(corners)
 
         if len(corners) > maxCorners:
             maxCorners = len(corners)
@@ -261,13 +271,14 @@ def getSignatureFromPage(img):
             maxRect['h'] = h
 
     if maxRect['w'] <= 1 or maxRect['h'] <= 1:
-        print 'Warning: No Signature Found'
+        print('Warning: No Signature Found')
         return img
 
     # Add padding so the signature is more visible
-    maxRect = addPadding(rect = maxRect, padding = 10, imgSize = imgSize)
+    maxRect = addPadding(rect=maxRect, padding=10, imgSize=imgSize)
 
-    return img[maxRect['y'] : maxRect['y'] + maxRect['h'], maxRect['x'] : maxRect['x'] + maxRect['w']]
+    return img[maxRect['y']: maxRect['y'] + maxRect['h'], maxRect['x']: maxRect['x'] + maxRect['w']]
+
 
 def getSignature(img):
     imgSize = np.shape(img)
@@ -280,16 +291,19 @@ def getSignature(img):
         blockSize = imgSize[0] / 2 * 2 + 1
     const = 10
 
-    mask = cv2.adaptiveThreshold(gImg, maxValue = 255, adaptiveMethod = cv2.ADAPTIVE_THRESH_MEAN_C, thresholdType = cv2.THRESH_BINARY, blockSize = blockSize, C = const)
+    print(blockSize)
+    mask = cv2.adaptiveThreshold(gImg, maxValue=255, adaptiveMethod=cv2.ADAPTIVE_THRESH_MEAN_C,
+                                 thresholdType=cv2.THRESH_BINARY, blockSize=blockSize, C=const)
     rmask = cv2.bitwise_not(mask)
 
     return (cv2.bitwise_and(img, img, mask=rmask), rmask)
+
 
 # First Prompt
 title = 'Image Selection'
 message = 'Choose a method of getting the picture'
 buttons = ['File', 'Camera']
-selection = easygui.indexbox(msg = message, title = title, choices = buttons)
+selection = easygui.indexbox(msg=message, title=title, choices=buttons)
 
 if selection == 0:
     img = getImageFromFile()
@@ -299,15 +313,15 @@ else:
     quit()
 
 # Extract Signature
-page = getPageFromImage(img = img)
-signatureBlock = getSignatureFromPage(img = page)
-(signature, mask) = getSignature(img = signatureBlock)
+page = getPageFromImage(img=img)
+signatureBlock = getSignatureFromPage(img=page)
+(signature, mask) = getSignature(img=signatureBlock)
 
 # Second Prompt
 title = 'Display or Export'
 message = 'Choose a method of showing the signature'
 buttons = ['Display on Screen', 'Export to File']
-selection = easygui.indexbox(msg = message, title = title, choices = buttons)
+selection = easygui.indexbox(msg=message, title=title, choices=buttons)
 
 if selection == 0:
     displayImageToScreen(signature, mask)
